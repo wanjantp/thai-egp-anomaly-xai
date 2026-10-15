@@ -6,8 +6,10 @@ download URL, size, the portal's last-modified date and our download date (5–1
 
 ## 1. e-GP contract records — Open Government Data of Thailand (data.go.th)
 
-Publisher: Comptroller General's Department (กรมบัญชีกลาง), Ministry of Finance.
-Portal: https://data.go.th, operated by the Digital Government Development Agency (DGA).
+Source system: e-GP, Comptroller General's Department (กรมบัญชีกลาง), Ministry of Finance.
+Portal organization: Digital Government Development Agency (DGA); publisher field "THAILAND GOVERNMENT SPENDING".
+Licence: Creative Commons Attribution (as shown on each dataset page).
+Cite as: Digital Government Development Agency (2026a) for the contract data, (2026b) for `summary_cgdcontract`, (2026c) for `egpwinner`.
 Dataset title (Thai): "ข้อมูลโครงการจัดซื้อจัดจ้างจากระบบการจัดซื้อจัดจ้างภาครัฐ ปีงบประมาณ …"
 
 | Fiscal year (B.E.) | Fiscal year (CE) | Dataset page | Files | Size (GB) |
@@ -35,7 +37,6 @@ Supporting datasets from the same publisher:
 | Winning-bidder register | https://data.go.th/dataset/egpwinner | 5 | Vendor fields |
 
 Fiscal years run October–September (FY2558 = October 2014 – September 2015).
-Check each dataset page for its licence and update date before reuse.
 
 ## 2. Coverage check before FY2558 — Anti-Corruption Organization of Thailand (ACT)
 
