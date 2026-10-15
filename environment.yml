@@ -1,0 +1,26 @@
+name: egp-xai
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  # ดาวน์โหลดข้อมูล
+  - requests
+  # จัดการข้อมูลขนาดใหญ่ (CSV หลาย GB)
+  - pandas>=2.2
+  - pyarrow
+  - polars
+  - duckdb
+  # anomaly detection / ML
+  - scikit-learn
+  - lightgbm
+  - networkx
+  # XAI
+  - shap
+  # วิเคราะห์ / แสดงผล
+  - matplotlib
+  - seaborn
+  - jupyterlab
+  - ipykernel
+  - pip
+  - pip:
+      - pythainlp   # ตัดคำชื่อโครงการภาษาไทย

@@ -1,0 +1,13 @@
+# Whitelist: track only the code and the files needed to rebuild the data.
+# Data are NOT redistributed here; see DATA_SOURCES.md (data.go.th and other sources).
+/*
+!/.gitignore
+!/.gitattributes
+!/README.md
+!/DATA_SOURCES.md
+!/DATA_MANIFEST.csv
+!/environment.yml
+!/run_*.bat
+!/src/
+/src/**/__pycache__/
+/src/**/*.py[cod]
