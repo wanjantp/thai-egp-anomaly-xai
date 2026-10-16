@@ -20,6 +20,7 @@ of split clusters with two or more vendors.
 
 Usage (Anaconda Prompt, env egp-xai):  python src\\split_keys.py
 Output: reports/split_keys.md (+ .csv). Cache: data/processed/_splitkeys/. Reads data/interim only.
+Unit and vendor keys are 64-bit hashes of the text keys to keep memory low.
 """
 import sys
 import time
@@ -45,8 +46,8 @@ def aggregate(con, y):
     t0 = time.time()
     src = (INTERIM / f"contracts_{y}" / "*.parquet").as_posix()
     con.execute(f"""CREATE OR REPLACE TEMP TABLE c AS
-        SELECT {DEDUP} sign_date, agreed_price, agency || '|' || coalesce(sub_agency, '') AS unit,
-               vendor_name_key || '|' || coalesce(province, '') AS vkey, {KIND_SQL} AS kind, {REGIME_SQL} AS regime
+        SELECT {DEDUP} sign_date, agreed_price, hash(agency || '|' || coalesce(sub_agency, '')) AS unit,
+               hash(vendor_name_key || '|' || coalesce(province, '')) AS vkey, {KIND_SQL} AS kind, {REGIME_SQL} AS regime
         FROM read_parquet('{src}')
         WHERE sign_date IS NOT NULL AND agreed_price > 0 AND agreed_price <= {MAX_PRICE} AND vendor_name_key IS NOT NULL""")
     parts = []
