@@ -65,7 +65,8 @@ def numbers(con):
     N.to_csv(REPORTS / "coverage_numbers.csv", index=False)
     G = N.groupby("fy").agg(published=("n", "sum"), numbers=("numbers", "sum"))
     G["share_published"] = (G.published / G.numbers).round(3)
-    G[["published", "numbers"]] = G[["published", "numbers"]].astype(int)
+    for c in ("published", "numbers"):
+        G[c] = G[c].map(lambda x: f"{int(x):,}")
     G = G[G.index.isin(years())]
     SECTIONS["numbers"] = ["## e-GP project numbers that appear in the published contract data", "",
                            "Fiscal year of the project number (YYMM); series with fewer than 500 published projects dropped.", "",
