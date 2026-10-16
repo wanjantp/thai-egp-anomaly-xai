@@ -1,5 +1,5 @@
 """Figures 1–5 of the GIQ manuscript (vector PDF + EPS, embedded fonts, no titles). Run from src/: python make_giq_figures.py
-Figures 1 and 3 are computed from data/processed/bunching_bins.parquet and reports/bunching_event_monthly.csv;
+Figure 1 is computed from data/processed/bunching_bins.parquet, Figure 3 from reports/bunching_event_monthly_agency.csv;
 Figures 2, 4 and 5 use the estimates reported in reports/bunching_cluster_boot_agency.csv, split_placebo_T and bunching_consolidation.md."""
 import sys
 import matplotlib
@@ -30,11 +30,14 @@ ax.set_ylabel("Thousand contracts per bin")
 ax.legend(frameon=False, fontsize=8, loc="upper right", bbox_to_anchor=(1.0, 0.72))
 fig.tight_layout(); fig.savefig("Figure_1.pdf"); fig.savefig("Figure_1.eps"); plt.close(fig)
 
-E = pd.read_csv(str(REPORTS / 'bunching_event_monthly.csv'))
+_ea = REPORTS / 'bunching_event_monthly_agency.csv'                  # agency-clustered (agency_event.py)
+E = pd.read_csv(str(_ea if _ea.exists() else REPORTS / 'bunching_event_monthly.csv'))
+if "ci_lo" not in E:
+    E["ci_lo"], E["ci_hi"] = E.dz_over_T - 1.96 * E.se, E.dz_over_T + 1.96 * E.se
 fig, axes = plt.subplots(2, 1, figsize=(7.0, 4.8), sharex=True)
 for ax, Tt, col, lab in ((axes[0], 500000, BLUE, "THB 500,000 (reference: fiscal 2015)"), (axes[1], 100000, GREY, "THB 100,000 (reference: post-Act months)")):
     e = E[E["T"] == Tt].copy(); e["t"] = pd.to_datetime(e["ym"])
-    ax.fill_between(e["t"], (e.dz_over_T - 1.96 * e.se) * 100, (e.dz_over_T + 1.96 * e.se) * 100, color=("#c6d7f0" if col == BLUE else "#e3e3e3"), lw=0)
+    ax.fill_between(e["t"], e.ci_lo * 100, e.ci_hi * 100, color=("#c6d7f0" if col == BLUE else "#e3e3e3"), lw=0)
     ax.plot(e["t"], e.dz_over_T * 100, color=col, lw=1.2)
     s = e[e.ym.str.endswith("-09")]
     ax.plot(s["t"], s.dz_over_T * 100, "o", ms=3, color="k", label="September")
