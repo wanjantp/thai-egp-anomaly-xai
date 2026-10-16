@@ -23,6 +23,8 @@ with its source URL, in [`DATA_SOURCES.md`](DATA_SOURCES.md) and resource by res
 | `src/bunching.py` | Bunching, splitting clusters, coverage, cluster bootstrap, specification curve, DiD on discounts |
 | `src/model_iforest.py` | Isolation Forest + SHAP |
 | `src/model_compare.py`, `src/model_compare2.py` | ECOD, HBOS, autoencoder, LOF, ensembles, rule-lift evaluation |
+| `src/model_compare3.py`, `src/summarize_compare3.py` | Round 3: consistent data-level injection test, model comparison across FY2561–2568 |
+| `src/check_specific_above500k.py` | Check of specific/selection-method contracts above THB 500,000 after the 2017 Act |
 | `src/make_giq_figures.py` | Figures 1–3 of the threshold paper (vector PDF/EPS) |
 | `run_*.bat` | Windows batch runs used for the long jobs (logs to `logs/`) |
 | `environment.yml` | Conda environment `egp-xai` (Python 3.11, DuckDB, Polars, scikit-learn, SHAP) |
