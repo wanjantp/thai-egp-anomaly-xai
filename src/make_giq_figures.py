@@ -1,6 +1,6 @@
 """Figures 1–5 of the GIQ manuscript (vector PDF + EPS, embedded fonts, no titles). Run from src/: python make_giq_figures.py
-Figures 1–2 are computed from data/processed/bunching_bins.parquet and reports/bunching_event_monthly.csv;
-Figures 3–5 use the estimates reported in reports/bunching_cluster_boot.csv, split_placebo_T and bunching_consolidation.md."""
+Figures 1 and 3 are computed from data/processed/bunching_bins.parquet and reports/bunching_event_monthly.csv;
+Figures 2, 4 and 5 use the estimates reported in reports/bunching_cluster_boot.csv, split_placebo_T and bunching_consolidation.md."""
 import sys
 import matplotlib
 matplotlib.use("Agg")
@@ -46,10 +46,10 @@ for ax, Tt, col, lab in ((axes[0], 500000, BLUE, "THB 500,000 (reference: fiscal
 axes[0].legend(frameon=False, fontsize=8, loc="upper right")
 axes[1].xaxis.set_major_locator(mdates.YearLocator()); axes[1].xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
 axes[1].set_xlabel("Month of contract signing")
-fig.tight_layout(); fig.savefig("Figure_2.pdf"); fig.savefig("Figure_2.eps"); plt.close(fig)
+fig.tight_layout(); fig.savefig("Figure_3.pdf"); fig.savefig("Figure_3.eps"); plt.close(fig)
 
 
-# Figure 3: yearly bunching response with clustered 95% CI
+# Figure 2: yearly bunching response with clustered 95% CI
 fy = np.arange(2016, 2026)
 dz = np.array([0.160,0.186,0.187,0.233,0.251,0.239,0.241,0.252,0.283,0.304])
 lo = np.array([0.118,0.142,0.143,0.181,0.200,0.190,0.190,0.201,0.223,0.234])
@@ -64,7 +64,7 @@ ax.set_ylim(0, 40); ax.set_yticks(range(0, 41, 10)); ax.set_yticklabels([f"{t}%"
 ax.set_xticks(fy); ax.set_xlabel("Fiscal year (FY2016 = Oct 2015 – Sep 2016)")
 ax.set_ylabel("Bunching response Δz/T")
 ax.grid(axis="y", color=LIGHT, lw=0.6); ax.set_axisbelow(True)
-fig.tight_layout(); fig.savefig("Figure_3.pdf"); fig.savefig("Figure_3.eps"); plt.close(fig)
+fig.tight_layout(); fig.savefig("Figure_2.pdf"); fig.savefig("Figure_2.eps"); plt.close(fig)
 
 # Figure 4: split shares at four thresholds by regime
 panels = [("THB 100k", "ceiling removed 2015", [32.9, 15.1, 11.6]),
