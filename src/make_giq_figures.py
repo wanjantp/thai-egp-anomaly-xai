@@ -1,6 +1,6 @@
 """Figures 1–5 of the GIQ manuscript (vector PDF + EPS, embedded fonts, no titles). Run from src/: python make_giq_figures.py
 Figures 1 and 3 are computed from data/processed/bunching_bins.parquet and reports/bunching_event_monthly.csv;
-Figures 2, 4 and 5 use the estimates reported in reports/bunching_cluster_boot.csv, split_placebo_T and bunching_consolidation.md."""
+Figures 2, 4 and 5 use the estimates reported in reports/bunching_cluster_boot_agency.csv, split_placebo_T and bunching_consolidation.md."""
 import sys
 import matplotlib
 matplotlib.use("Agg")
@@ -51,16 +51,17 @@ fig.tight_layout(); fig.savefig("Figure_3.pdf"); fig.savefig("Figure_3.eps"); pl
 
 # Figure 2: yearly bunching response with clustered 95% CI
 fy = np.arange(2016, 2026)
-dz = np.array([0.160,0.186,0.187,0.233,0.251,0.239,0.241,0.252,0.283,0.304])
-lo = np.array([0.118,0.142,0.143,0.181,0.200,0.190,0.190,0.201,0.223,0.234])
-hi = np.array([0.201,0.233,0.228,0.278,0.298,0.285,0.287,0.298,0.338,0.365])
+cb = REPORTS / "bunching_cluster_boot_agency.csv"            # agency-clustered, sampling + shape error (agency_bootstrap.py)
+cb = pd.read_csv(cb if cb.exists() else REPORTS / "bunching_cluster_boot.csv").set_index("label")
+yr = [f"FY{y + 543}" for y in fy]
+dz, lo, hi = (cb.loc[yr, c].values for c in ("dz_over_T", "ci95_lo_T", "ci95_hi_T"))
 fig, ax = plt.subplots(figsize=(7.0, 3.4))
 ax.errorbar(fy, dz*100, yerr=[(dz-lo)*100, (hi-dz)*100], fmt="o", color=BLUE, ecolor=BLUE, capsize=3, ms=5, lw=1.2)
 ax.axvline(2017.5, color=GREY, ls="--", lw=0.9)
-ax.text(2017.58, 39, "2017 Act in force (23 Aug 2017)", color="#555555", fontsize=8, va="top")
+ax.text(2017.58, 49, "2017 Act in force (23 Aug 2017)", color="#555555", fontsize=8, va="top")
 ax.annotate(f"{dz[0]*100:.0f}%", (fy[0], dz[0]*100), xytext=(8, -3), textcoords="offset points", fontsize=8.5, fontweight="bold")
 ax.annotate(f"{dz[-1]*100:.0f}%", (fy[-1], dz[-1]*100), xytext=(-26, -3), textcoords="offset points", fontsize=8.5, fontweight="bold")
-ax.set_ylim(0, 40); ax.set_yticks(range(0, 41, 10)); ax.set_yticklabels([f"{t}%" for t in range(0, 41, 10)])
+ax.set_ylim(0, 50); ax.set_yticks(range(0, 51, 10)); ax.set_yticklabels([f"{t}%" for t in range(0, 51, 10)])
 ax.set_xticks(fy); ax.set_xlabel("Fiscal year (FY2016 = Oct 2015 – Sep 2016)")
 ax.set_ylabel("Bunching response Δz/T")
 ax.grid(axis="y", color=LIGHT, lw=0.6); ax.set_axisbelow(True)

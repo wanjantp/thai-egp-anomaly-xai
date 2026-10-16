@@ -14,8 +14,14 @@ band in a month. This script reports three checks on the discount vs budget (1 �
   3. Placebo bands at the real date: two pairs of bands whose method did not change in 2015
      (THB 0–30k vs 30k–100k, both discretionary; THB 0.5–2M vs 2–3M, both competitive).
 
+  4. (v7, statistical review) Extended placebo set and HAC sensitivity, from the saved series alone
+     (`python src\\did_inference.py extended`): placebo bands at every break date Jan 2015 – May 2017 added to the
+     placebo dates, the rank of the actual estimate among all placebos, and Newey–West SEs with 3, 6 and 12 lags
+     judged against t(33) critical values.
+
 Usage (Anaconda Prompt, env egp-xai; needs the DiD cache from `python revision_checks.py did`):
-    python src\\did_inference.py
+    python src\\did_inference.py            (steps 1–4)
+    python src\\did_inference.py extended   (step 4 only, from reports/did_inference_series.csv)
 Output: reports/did_inference.md (+ reports/did_inference_series.csv). Reads data/processed only.
 """
 import sys
@@ -148,6 +154,46 @@ def main():
     log(f"→ {out}")
 
 
+def extended(S=None):
+    from scipy import stats
+    S = pd.read_csv(REPORTS / "did_inference_series.csv") if S is None else S
+    breaks = pd.period_range("2015-01", "2017-05", freq="M").astype(str)
+    band_pl = []
+    for (t, c), s in S.groupby(["treat", "control"]):
+        if t != TREAT:
+            band_pl += [(f"{t} vs {c}", b, contrast(s, START, b, END)) for b in breaks]
+    band_pl = pd.DataFrame(band_pl, columns=["pair", "break", "beta"])
+    L = ["# DiD inference, extended placebo set and HAC sensitivity (statistical review, v7)", "",
+         "Placebos: (a) fake break dates for the treated pair (Jan–Jul 2015 within the pre-period, Jan 2016 – May 2017 "
+         "within the transition); (b) two pairs of bands whose method did not change, at every break date Jan 2015 – "
+         f"May 2017 over the full window ({len(band_pl)} contrasts). p = (1 + #|placebo| ≥ |actual|) / (1 + #placebos).", "",
+         "| treated vs control | actual | placebos | rank of actual | max |placebo| | p | NW SE 3 / 6 / 12 lags | two-sided p, t(33), 12 lags |",
+         "|---|---|---|---|---|---|---|---|"]
+    for (t, c), s in S.groupby(["treat", "control"]):
+        if t != TREAT:
+            continue
+        s = s.sort_values("ym")
+        post = (s.ym >= POST).astype(float).values
+        b, _ = newey_west(s.delta.values, post, 3)
+        ses = [newey_west(s.delta.values, post, l)[1] for l in (3, 6, 12)]
+        P = pd.concat([placebo_dates(s).beta, band_pl.beta], ignore_index=True)
+        k = int((P.abs() >= abs(b)).sum())
+        p = (1 + k) / (1 + len(P))
+        pt = 2 * stats.t.sf(abs(b) / ses[2], df=len(s) - 2)
+        L.append(f"| {t} vs {c} | {b:+.2%} | {len(P)} | {k + 1} of {len(P) + 1} | {P.abs().max():.2%} | {p:.3f} | "
+                 + " / ".join(f"{x:.2%}" for x in ses) + f" | {pt:.1e} |")
+    L += ["", "Band placebos, largest contrasts:", "", "| pair | break | contrast |", "|---|---|---|"]
+    for r in band_pl.reindex(band_pl.beta.abs().sort_values(ascending=False).index).head(5).itertuples():
+        L.append(f"| {r.pair} | {r._2} | {r.beta:+.2%} |")
+    out = REPORTS / "did_inference_extended.md"
+    out.write_text("\n".join(L) + "\n", encoding="utf-8")
+    log(f"→ {out}")
+
+
 if __name__ == "__main__":
     sys.stdout.reconfigure(encoding="utf-8")
-    main()
+    if sys.argv[1:] == ["extended"]:
+        extended()
+    else:
+        main()
+        extended()

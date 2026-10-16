@@ -9,7 +9,8 @@ reference = contracts signed before 15 September 2015, same estimator as the man
   the balanced panel of buying units present in every fiscal year (from bunching_unit_bands.parquet),
 and the balanced panel split into central and local. Each group uses its own reference distribution. A last pair of
 rows holds the central/local mix of contracts at its fiscal 2016 level, which isolates the part of the trend due to mix.
-Agency-clustered Poisson bootstrap (units resampled, weights shared across years) gives 95% intervals and the
+Agency-clustered Poisson bootstrap (whole agencies resampled, weights shared across years; cluster="unit" resamples
+buying units instead) gives 95% intervals and the
 change from fiscal 2016 to fiscal 2025.
 
 Usage (Anaconda Prompt, env egp-xai):  python src\\composition_check.py
@@ -34,7 +35,7 @@ def is_local(agency):
     return agency.startswith(LOCAL_PREFIX) or agency in LOCAL_EXACT
 
 
-def main(R=200, seed=2026):
+def main(R=500, seed=2026, cluster="agency"):
     U = pd.concat([pd.read_parquet(f) for f in sorted(UNIT_BINS_DIR.glob("*.parquet"))], ignore_index=True)
     grid = np.arange(LO + W, HI + W, W)
     gi = {g: i for i, g in enumerate(grid)}
@@ -50,7 +51,7 @@ def main(R=200, seed=2026):
     groups = {"all": np.ones(len(U), bool), "central": ~U.local.values, "local": U.local.values,
               "balanced": U.balanced.values, "balanced central": (U.balanced & ~U.local).values,
               "balanced local": (U.balanced & U.local).values}
-    uid, units = pd.factorize(U["unit"])
+    uid, units = pd.factorize(U["unit"].str.split("|", n=1).str[0] if cluster == "agency" else U["unit"])
     gid = U["bin"].map(gi).values
     nU, nG = len(units), len(grid)
     rng = np.random.default_rng(seed)
@@ -93,8 +94,8 @@ def main(R=200, seed=2026):
     R_.drop(columns="draws").to_csv(REPORTS / "composition_check.csv", index=False)
 
     L = ["# Bunching response by year: buyers or the mix of buyers? (Δz/T at THB 500,000)", "",
-         "Each group uses its own pre-reform reference. 95% intervals from an agency-clustered Poisson bootstrap "
-         f"({R} draws, weights shared across years).", "",
+         "Each group uses its own pre-reform reference. 95% intervals from a Poisson bootstrap over "
+         f"{'agencies' if cluster == 'agency' else 'buying units'} ({R} draws, weights shared across years).", "",
          "| fiscal year | " + " | ".join(groups) + " |", "|---" * (len(groups) + 1) + "|"]
     for y in YEARS:
         cells = []
