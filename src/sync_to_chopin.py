@@ -92,7 +92,7 @@ def main():
 
         dirs = sorted({str(Path(p).parent.as_posix()) for p, _, _ in todo})
         mk = subprocess.run(["ssh", *SSH_OPTS, a.host,
-                             "cd " + a.remote_root + " && mkdir -p " + " ".join(f"'{d}'" for d in dirs)])
+                             "mkdir -p " + a.remote_root + " && cd " + a.remote_root + " && mkdir -p " + " ".join(f"'{d}'" for d in dirs)])
         if mk.returncode != 0:
             print(f"[round {rnd}] mkdir failed; retry in 30 s")
             time.sleep(30)

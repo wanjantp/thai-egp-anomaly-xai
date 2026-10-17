@@ -1,0 +1,16 @@
+# GPU environment for foundation embeddings (and later papers 4, 6, 8). Versions are recorded in each manifest.json.
+name: egp-gpu
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pip
+  - numpy
+  - pandas
+  - pyarrow
+  - duckdb
+  - pip:
+      - torch
+      - sentence-transformers
+      - transformers
+      - accelerate

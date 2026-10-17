@@ -27,3 +27,9 @@
 # DuckDB temp files (never commit)
 /src/.tmp/
 /.tmp/
+# Chopin queue, foundation tables, environments
+!/queue/
+!/foundation/
+!/envs/
+/queue/__pycache__/
+/foundation/__pycache__/
