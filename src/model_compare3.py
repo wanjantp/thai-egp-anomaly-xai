@@ -15,6 +15,7 @@ model_compare3.py — เทียบโมเดลด้วย injection แ�
   แถวฐาน: สัญญาจริงที่ไม่มี red flag ตามกฎเลย (rule_score = 0) — ไม่ขึ้นกับโมเดลใด
 รัน injection แบบเดิม (เขียนทับฟีเจอร์, แถวฐานชุดเดียวกับรอบ 2) คู่กันเพื่อเทียบ
 AE: max_iter 300 (รอบ 2 ชน 60 ทุกปี) → score_ae300.npy; LOF: ใช้คะแนนรอบ 2 (สุ่มตัวอย่างชุดเดิม ตรวจว่าตรงกันก่อนใช้)
+v2 (16 ต.ค. 2569): ปัดแถวที่ฉีดเป็น float32 ก่อนให้คะแนน — v1 ให้แถวที่ไม่ได้แก้อะไรติด top1% ของ HBOS/ECOD 8 เท่าของที่ควร
 
   python src\\model_compare3.py --year 2568
   python src\\model_compare3.py --year 2568 --test      (ทดสอบเร็ว: 200k แถวแรก)
@@ -116,7 +117,9 @@ def rebuild(B, jidx, med_imp, p, k_add=0, dv=0.0, day_add=0, day_dv=0.0, month_a
         setf("vendor_log_value", np.log10(1 + B["vval"] + dv))
     bad = ~np.isfinite(Xn)
     Xn[bad] = np.take(med_imp, np.where(bad)[1])
-    return Xn
+    # X.npy เก็บเป็น float32 → ปัดแถวที่สร้างใหม่ให้เป็น float32 ก่อน มิฉะนั้นค่าอย่าง log1p(1) ใน float64 จะต่ำกว่าค่าต่ำสุด
+    # (float32) ของข้อมูลจริงเล็กน้อย → HBOS/ECOD ถือว่าอยู่นอกช่วงและให้คะแนนผิดปกติสูงสุด (แก้ 16 ต.ค. 2569)
+    return Xn.astype(np.float32).astype(np.float64)
 
 
 def take(B, idx):
@@ -285,6 +288,7 @@ def main():
     thr1 = {m: np.quantile(R[m], 0.99) for m in R}; thr5 = {m: np.quantile(R[m], 0.95) for m in R}
 
     def evaluate(Xi):
+        Xi = Xi.astype(np.float32).astype(np.float64)   # ความแม่นยำเดียวกับ X.npy (ดู rebuild)
         si = {"IF": -m_if.score_samples(Xi.astype(np.float32)), "ECOD": ecod.score(Xi), "HBOS": hbos.score(Xi),
               "AE": ae_score(Xi), "LOF": lof_s(Xi)}
         pct = {m: np.searchsorted(srt[m], si[m]) / n for m in si}

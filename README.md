@@ -11,6 +11,11 @@ fiscal years 2015–2025 (B.E. 2558–2568):
 This repository contains **code only**. No data are redistributed: every input is public and is listed,
 with its source URL, in [`DATA_SOURCES.md`](DATA_SOURCES.md) and resource by resource in
 [`DATA_MANIFEST.csv`](DATA_MANIFEST.csv).
+[`DATA_SHA256.csv`](DATA_SHA256.csv) gives the size and SHA-256 checksum of each of the 113 raw files
+(46.6 GB) as downloaded for the paper, so that a replicator can confirm that a fresh download holds the same bytes
+(`src/raw_checksums.py`). The only data in the repository are the 200 split clusters of the validation sample and
+their codes (`reports/split_audit_sample.csv`, `reports/split_audit_codes.csv`, `reports/validation/`), taken from the
+same open data (vendor names withheld).
 
 ## Files
 
@@ -53,9 +58,29 @@ Threshold paper (`src/bunching.py <step>`; each `*_aggregate` step must run befo
 | Coverage and missing mass | `unit_bands`, `coverage`, `consolidation_aggregate`, `consolidation` |
 | Cost of discretion | `did_aggregate`, `did_discount`, `harm_cells_aggregate`, `harm_fe`, `split_harm_aggregate`, `split_harm` |
 
-`src/make_giq_figures.py` draws Figures 1–3 from the estimates written to `reports/`.
+`src/make_giq_figures.py` draws Figures 1–5 from the estimates written to `reports/`.
+
+Scripts behind each part of the threshold paper (run from `src/`; each writes a Markdown report to `reports/`):
+
+| Section of the paper | Scripts |
+|---|---|
+| 3 Data (coverage, descriptive statistics) | `coverage_check.py`, `descriptives.py` |
+| 5.1–5.2 Bunching and timing, agency-clustered intervals | `bunching.py` (above), `agency_bootstrap.py`, `agency_event.py` |
+| 5.3 Where the missing contracts went | `excess_sources.py`, `value_reallocation.py`, `budget_at_threshold.py` |
+| 5.4 Splitting at the four thresholds | `bunching.py split*`, `split_transition_months.py` |
+| 5.5 Cost of discretion | `bunching.py did_* harm_* split_harm*`, `did_inference.py`, `did_ref_agency.py`, `did_by_gov.py`, `price_equality.py` |
+| 6 Robustness: inflation, composition, work-type mix | `inflation_adjust.py`, `composition_check.py`, `worktype_mix.py` |
+| 6 Robustness: other checks | `revision_checks.py`, `carril_test.py`, `split_keys.py`, `split_cross_vendor.py`, `check_specific_above500k.py` |
+| 6 Validation sample of split clusters | `split_audit_sample.py` (draws the sample), `split_audit_sheets.py` (coding sheets; `kappa` reports agreement) |
+
+Validation sample. `reports/split_audit_codes.csv` holds one code per cluster (A = one purchase divided,
+B = separate needs, C = cannot tell). `reports/validation/split_audit_verify.xlsx` lists all 200 clusters with their
+project names for checking each code; `python src\split_audit_sheets.py kappa` writes
+`reports/validation/split_audit_agreement.md` with the verified shares and, once an independent coder has filled in
+`second_coder_blind.xlsx` (50 clusters, period cues masked; not tracked until coding is complete), the agreement and
+Cohen's kappa.
 Anomaly screening: `python src\model_iforest.py --year 2568`, then `model_compare.py` and `model_compare2.py`
 with the same `--year` (see `run_*.bat`).
 
-The raw CSV files total about 46 GB. All steps run out of core with DuckDB/Polars on a desktop computer
+The raw CSV files total about 46.6 GB. All steps run out of core with DuckDB/Polars on a desktop computer
 without a GPU; point the DuckDB database (`--db`) and its temp directory to a fast local disk.
