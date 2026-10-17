@@ -1,21 +1,23 @@
 name: egp-xai
 channels:
   - conda-forge
+# Versions pinned to the PC env egp-xai on 2026-10-17 (pc_versions.txt) so Chopin matches it
 dependencies:
-  - python=3.11
+  - python=3.11.17
   # ดาวน์โหลดข้อมูล
   - requests
   # จัดการข้อมูลขนาดใหญ่ (CSV หลาย GB)
-  - pandas>=2.2
-  - pyarrow
-  - polars
-  - duckdb
+  - numpy=2.4.6
+  - pandas=3.0.6
+  - pyarrow=25.0.0
+  - polars=2.0.0
+  - duckdb=1.5.6
   # anomaly detection / ML
-  - scikit-learn
-  - lightgbm
+  - scikit-learn=1.9.1
+  - lightgbm=4.7.0
   - networkx
   # XAI
-  - shap
+  - shap=0.51.0
   # วิเคราะห์ / แสดงผล
   - matplotlib
   - seaborn
