@@ -11,8 +11,8 @@ fiscal years 2015–2025 (B.E. 2558–2568):
 This repository contains **code only**. No data are redistributed: every input is public and is listed,
 with its source URL, in [`DATA_SOURCES.md`](DATA_SOURCES.md) and resource by resource in
 [`DATA_MANIFEST.csv`](DATA_MANIFEST.csv).
-[`DATA_SHA256.csv`](DATA_SHA256.csv) gives the size and SHA-256 checksum of each of the 113 raw files
-(46.6 GB) as downloaded for the paper, so that a replicator can confirm that a fresh download holds the same bytes
+[`DATA_SHA256.csv`](DATA_SHA256.csv) gives the size and SHA-256 checksum of each of the 112 source data files
+(46.6 GB) and of the download manifest, as downloaded for the paper, so that a replicator can confirm that a fresh download holds the same bytes
 (`src/raw_checksums.py`). The only data in the repository are the 200 split clusters of the validation sample and
 their codes (`reports/split_audit_sample.csv`, `reports/split_audit_codes.csv`, `reports/validation/`), taken from the
 same open data (vendor names withheld).

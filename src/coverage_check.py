@@ -68,6 +68,14 @@ def numbers(con):
     for c in ("published", "numbers"):
         G[c] = G[c].map(lambda x: f"{int(x):,}")
     G = G[G.index.isin(years())]
+    Mo = N.groupby("yymm").agg(published=("n", "sum"), numbers=("numbers", "sum"))
+    Mo["share_published"] = (Mo.published / Mo.numbers).round(3)
+    Mo = Mo.loc["5807":"5906"]
+    for c in ("published", "numbers"):
+        Mo[c] = Mo[c].map(lambda x: f"{int(x):,}")
+    SECTIONS["months"] = ["## Monthly share around the reform (YYMM of the project number, B.E. year)", "",
+                          "5809 = September 2015; 5810–5811 = October–November 2015, the first months under the new ceiling.", "",
+                          Mo.to_markdown(), ""]
     SECTIONS["numbers"] = ["## e-GP project numbers that appear in the published contract data", "",
                            "Fiscal year of the project number (YYMM); series with fewer than 500 published projects dropped.", "",
                            G.to_markdown(), ""]
@@ -88,7 +96,7 @@ def summary(con=None):
 
 def write():
     L = ["# Coverage of fiscal 2016–2017 (B.E. 2559–2560)", ""]
-    for k in ("units", "bands", "numbers", "summary"):
+    for k in ("units", "bands", "numbers", "months", "summary"):
         L += SECTIONS.get(k, [])
     out = REPORTS / "coverage_check.md"
     out.write_text("\n".join(L), encoding="utf-8")

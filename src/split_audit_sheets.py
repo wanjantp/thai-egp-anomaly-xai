@@ -60,7 +60,7 @@ def cluster_table(s, blind=False):
         "agency": g.agency.first(),
         "contracts": g.size(),
         "total_THB": g.agreed_price.sum().round(0),
-        "project_names": g.apply(lambda d: "\n".join(f"{i + 1}. {n} [{p:,.0f}]" for i, (n, p) in
+        "project_names": g[["project_name", "agreed_price"]].apply(lambda d: "\n".join(f"{i + 1}. {n} [{p:,.0f}]" for i, (n, p) in
                                                      enumerate(zip(d.project_name, d.agreed_price)))),
     }).reset_index()
 

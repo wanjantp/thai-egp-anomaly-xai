@@ -21,9 +21,3 @@
 /reports/validation/*
 !/reports/validation/split_audit_verify.xlsx
 !/reports/validation/split_audit_agreement.md
-# Linux/Chopin run scripts and project notes
-!/run_*.sh
-!/PROJECT_CONTEXT.md
-# DuckDB temp files (never commit)
-/src/.tmp/
-/.tmp/

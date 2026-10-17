@@ -42,8 +42,9 @@ def aggregate(con):
                            FROM read_parquet('{src(y)}')
                            WHERE sign_date IS NOT NULL AND agreed_price > 0 AND agreed_price <= {MAX_PRICE}
                              AND vendor_name_key IS NOT NULL),
-                     x AS (SELECT *, count(*) OVER (PARTITION BY unit, vkey) AS npair,
-                                     count(*) OVER (PARTITION BY unit, vkey, sign_date) AS nday FROM c)
+                     p AS (SELECT unit, vkey, count(*) AS npair FROM c GROUP BY ALL),
+                     d AS (SELECT unit, vkey, sign_date, count(*) AS nday FROM c GROUP BY ALL),
+                     x AS (SELECT c.*, p.npair, d.nday FROM c JOIN p USING (unit, vkey) JOIN d USING (unit, vkey, sign_date))
                 SELECT {y} AS fy, {REGIME_SQL} AS regime, (ceil(agreed_price / 1000) * 1000)::INT AS bin,
                        count(*)::INT AS n_all,
                        sum(CASE WHEN npair = 1 THEN 1 ELSE 0 END)::INT AS n_single_pair,
