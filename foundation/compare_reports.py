@@ -39,6 +39,11 @@ def main():
     for f in sorted(la & lb):
         ta = (A / f).read_text(encoding="utf-8", errors="replace")
         tb = (B / f).read_text(encoding="utf-8", errors="replace")
+        if f.endswith(".csv"):  # row order is not guaranteed by DuckDB: compare with rows sorted
+            def srt(t):
+                ls = t.splitlines()
+                return "\n".join(ls[:1] + sorted(ls[1:]))
+            ta, tb = srt(ta), srt(tb)
         if ta == tb:
             rows.append((0.0, f, "identical", ""))
             continue

@@ -7,7 +7,7 @@ method class, and for the THB 0.1–0.5 million band that the reform moved:
   contracts, median and mean agreed price, share signed by a discretionary method,
   discount relative to budget (1 − agreed/budget, contracts with 0.3 ≤ agreed/budget ≤ 1.5): mean and SD,
   share of contracts with the agreed price at or above the budget.
-Aggregated year by year (sums, sums of squares, approximate medians), then combined.
+Aggregated year by year (sums, sums of squares, exact medians), then combined.
 
 Usage (Anaconda Prompt, env egp-xai):  python src\\descriptives.py
 Output: reports/descriptives.md (+ descriptives.csv); cache data/processed/_revision/desc_YYYY.parquet.
@@ -35,7 +35,7 @@ def aggregate(con):
                                   budget > 0 AND agreed_price / budget BETWEEN 0.3 AND 1.5 AS ok_b
                            FROM read_parquet('{src(y)}')
                            WHERE sign_date IS NOT NULL AND agreed_price > 0 AND agreed_price <= {MAX_PRICE})
-                SELECT {y} AS fy, regime, gov, mcls, band, count(*)::BIGINT n, sum(p) sp, approx_quantile(p, 0.5) med,
+                SELECT {y} AS fy, regime, gov, mcls, band, count(*)::BIGINT n, sum(p) sp, quantile_cont(p, 0.5) med,
                        sum(CASE WHEN ok_b THEN 1 ELSE 0 END)::BIGINT nb,
                        sum(CASE WHEN ok_b THEN 1 - p / budget END) sd, sum(CASE WHEN ok_b THEN (1 - p / budget) ^ 2 END) sd2,
                        sum(CASE WHEN ok_b AND p >= budget THEN 1 ELSE 0 END)::BIGINT n_ge
@@ -71,7 +71,7 @@ def main():
     R.to_csv(REPORTS / "descriptives.csv", index=False)
     L = ["# Descriptive statistics by regime (agreed price; discount = 1 − agreed/budget)", "",
          "Regimes by signing date: pre = before 1 Oct 2015; transition = 1 Oct 2015 – 22 Aug 2017; act = from 23 Aug 2017. "
-         "Median = contract-weighted mean of yearly approximate medians.", "",
+         "Median = contract-weighted mean of yearly medians.", "",
          "| band | regime | group | contracts | median price | mean price | discretionary | discount mean (SD) | at/above budget |",
          "|---|---|---|---|---|---|---|---|---|"]
     for r in R.itertuples():

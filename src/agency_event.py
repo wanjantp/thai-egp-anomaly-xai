@@ -64,7 +64,7 @@ def series(A, T, c, R, rng):
     grid = np.arange(c["lo"] + c["W"], c["hi"] + c["W"], c["W"])
     gi = {g: i for i, g in enumerate(grid)}
     d = d[d.bin.isin(gi)]
-    aid, ags = pd.factorize(d.agency)
+    aid, ags = pd.factorize(d.agency, sort=True)  # sorted: same bootstrap draws on every machine
     gid = d.bin.map(gi).values
     Ws = sparse.csr_matrix(np.vstack([np.ones(len(ags)), rng.poisson(1.0, size=(R, len(ags)))]))
     months = sorted(m for m in d.ym.unique() if "2014-10" <= m <= "2025-09")

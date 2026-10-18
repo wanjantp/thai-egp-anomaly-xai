@@ -51,7 +51,7 @@ def main(R=500, seed=2026, cluster="agency"):
     groups = {"all": np.ones(len(U), bool), "central": ~U.local.values, "local": U.local.values,
               "balanced": U.balanced.values, "balanced central": (U.balanced & ~U.local).values,
               "balanced local": (U.balanced & U.local).values}
-    uid, units = pd.factorize(U["unit"].str.split("|", n=1).str[0] if cluster == "agency" else U["unit"])
+    uid, units = pd.factorize(U["unit"].str.split("|", n=1).str[0] if cluster == "agency" else U["unit"], sort=True)  # sorted: same draws on every machine
     gid = U["bin"].map(gi).values
     nU, nG = len(units), len(grid)
     rng = np.random.default_rng(seed)

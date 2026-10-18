@@ -64,7 +64,7 @@ def main(R=500, seed=2026):
     U["cell"] = U["kind"] + np.where(U["local"], "|local", "|central")
     kinds = sorted(U["kind"].unique())
     cells = sorted(U["cell"].unique())
-    uid, units = pd.factorize(U["unit"].str.split("|", n=1).str[0])
+    uid, units = pd.factorize(U["unit"].str.split("|", n=1).str[0], sort=True)  # sorted: same draws on every machine
     gid = U["bin"].map(gi).values
     nU, nG = len(units), len(grid)
     rng = np.random.default_rng(seed)

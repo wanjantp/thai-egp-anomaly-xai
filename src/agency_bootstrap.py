@@ -45,7 +45,7 @@ def bunching_part(R, seed):
     U = U[U["bin"].isin(gi)].copy()
     U["agency"] = agency_of(U["unit"])
     loc = is_local(U["agency"]).values
-    cid, ags = pd.factorize(U["agency"])
+    cid, ags = pd.factorize(U["agency"], sort=True)  # sorted: same bootstrap draws on every machine
     gid = U["bin"].map(gi).values
     nA, nG = len(ags), len(grid)
     rng = np.random.default_rng(seed)
@@ -96,7 +96,7 @@ def splitting_part(R, seed):
     B = pd.concat([pd.read_parquet(f) for f in sorted((PROCESSED / "_revision").glob("boot_25??.parquet"))],
                   ignore_index=True).fillna(0)
     B["agency"] = agency_of(B["unit"])
-    cid, ags = pd.factorize(B["agency"])
+    cid, ags = pd.factorize(B["agency"], sort=True)
     B["cid"] = cid
     nA = len(ags)
     act = (B.regime == "act") & B.fy.between(2561, 2568)

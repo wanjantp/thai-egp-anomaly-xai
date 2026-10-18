@@ -24,7 +24,7 @@ SECTION = ["coverage_check", "descriptives", "agency_bootstrap", "agency_event",
            "carril_test", "split_cross_vendor", "did_inference", "did_ref_agency", "did_by_gov", "price_equality",
            "inflation_adjust", "composition_check", "worktype_mix", "revision_checks", "check_specific_above500k",
            "make_giq_figures"]
-WAIT_R4 = ("timeout 5h bash -c 'while pgrep -u \"$USER\" -f run_round4.sh >/dev/null; do sleep 60; done'; "
+WAIT_R4 = ("timeout 5h bash -c 'while pgrep -u \"$USER\" -f [r]un_round4.sh >/dev/null; do sleep 60; done'; "
            "echo round 4 finished or 5 h passed; true")
 
 rows = []
@@ -54,7 +54,9 @@ job("p2_vs_round4", "cpu_p2", [], 0.5, "$REPO",
     f'--out {P2}/reports/_vs_round4.md')
 
 # ---- lane cpu_p1: paper 1 reproduction from raw CSV (check only; the submitted numbers stay as they are) ----
-job("p1_clean", "cpu_p1", ["wait_round4"], 16, P1,
+job("p1_profile", "cpu_p1", ["wait_round4"], 16, P1,
+    f'"$PY_CPU" src/profile_raw.py --years {" ".join(Y_ALL)} --threads 4 --memory 10GB --db "$TMPDIR/profile.duckdb"')
+job("p1_clean", "cpu_p1", ["p1_profile"], 16, P1,
     f'"$PY_CPU" src/clean.py --years {" ".join(Y_ALL)} --threads 4 --memory 10GB --db "$TMPDIR/clean.duckdb"')
 for y in Y_ALL:
     job(f"p1_features_{y}", "cpu_p1", ["p1_clean"], 3, P1,

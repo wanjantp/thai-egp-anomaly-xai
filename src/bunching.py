@@ -62,7 +62,8 @@ def log(m):
 def connect():
     con = duckdb.connect()
     con.execute(f"SET temp_directory='{(Path(tempfile.gettempdir()) / 'duckdb_egp').as_posix()}'")
-    con.execute("SET threads=2; SET memory_limit='2GB'")
+    con.execute(f"SET threads={__import__('os').environ.get('EGP_DUCKDB_THREADS', '2')}; "
+                f"SET memory_limit='{__import__('os').environ.get('EGP_DUCKDB_MEMORY', '2GB')}'")  # resources only; results unchanged
     return con
 
 
@@ -886,8 +887,8 @@ def split_placebo():
         for k in range(NB):
             parts.append(con.execute(f"""
             WITH r AS (SELECT agreed_price, unit, mo, vkey, regime,
-                         row_number() OVER (PARTITION BY unit, mo ORDER BY random()) rn_rand,
-                         row_number() OVER (PARTITION BY unit, mo ORDER BY vkey, agreed_price) rn_key
+                         row_number() OVER (PARTITION BY unit, mo ORDER BY hash(vkey, agreed_price, regime, 42), vkey, agreed_price, regime) rn_rand,  -- deterministic shuffle (was random(): differed between runs)
+                         row_number() OVER (PARTITION BY unit, mo ORDER BY vkey, agreed_price, regime) rn_key
                   FROM c WHERE hash(unit) % {NB} = {k}),
             sh AS (SELECT a.regime, a.agreed_price, a.unit, a.mo, b.vkey AS vfake
                    FROM r a JOIN r b ON a.unit = b.unit AND a.mo = b.mo AND a.rn_rand = b.rn_key),
@@ -1173,7 +1174,7 @@ def split_harm_aggregate():
                 samples.append(con.execute("""
                     WITH pick AS (SELECT * FROM cl WHERE k >= 2 AND ((mx <= 500000 AND v > 500000 AND v <= 2000000)
                                                                   OR (mx <= 100000 AND v > 100000 AND v <= 500000))
-                                  ORDER BY random() LIMIT 25)
+                                  ORDER BY hash(unit, vkey, sign_date, 7), unit, vkey, sign_date LIMIT 25)  -- deterministic examples
                     SELECT p.sign_date, p.gov, p.regime, p.k, round(p.v) v, round(p.r) r, p.n_proj, p.n_names, round(p.jw_min, 3) jw_min, p.mtype, p.kind,
                            string_agg(c.pname || ' [' || CAST(round(c.agreed_price) AS BIGINT) || ']', ' || ') AS names
                     FROM pick p JOIN c USING (unit, vkey, sign_date) GROUP BY ALL""").df())
@@ -1666,7 +1667,7 @@ def cluster_bootstrap(R=500, seed=2026):
     grid = np.arange(LO + W, HI + W, W)
     gi = {g: i for i, g in enumerate(grid)}
     U = U[U["bin"].isin(gi)]
-    uid, units = pd.factorize(U["unit"])
+    uid, units = pd.factorize(U["unit"], sort=True)  # sorted: same bootstrap draws on every machine
     U["uid"] = uid; U["gid"] = U["bin"].map(gi)
     nU, nG = len(units), len(grid)
     groups = {"pre": U.regime == "pre", "transition (FY2559–60)": U.regime == "transition", "act (FY2560–68)": U.regime == "act"}

@@ -4,7 +4,7 @@
 #!lane cpu_p1 threads=4 cpus=4-7
 #!lane cpu_fdn threads=3 cpus=8-10
 #!lane gpu threads=2 cpus=11-12 gpu=0
-wait_round4	cpu_p2	-	5.5	$EGP	timeout 5h bash -c 'while pgrep -u "$USER" -f run_round4.sh >/dev/null; do sleep 60; done'; echo round 4 finished or 5 h passed; true
+wait_round4	cpu_p2	-	5.5	$EGP	timeout 5h bash -c 'while pgrep -u "$USER" -f [r]un_round4.sh >/dev/null; do sleep 60; done'; echo round 4 finished or 5 h passed; true
 p2_features_2568	cpu_p2	wait_round4	3	$EGP/work/p2	"$PY_CPU" src/features.py --years 2568 --threads 4 --memory 8GB --db "$TMPDIR/feat.duckdb"
 p2_iforest_2568	cpu_p2	p2_features_2568	8	$EGP/work/p2	"$PY_CPU" src/model_iforest.py --year 2568
 p2_compare_2568	cpu_p2	p2_iforest_2568	6	$EGP/work/p2/src	"$PY_CPU" model_compare.py --year 2568
@@ -56,7 +56,8 @@ p2_screen_2561	cpu_p2	p2_compare3_2561	6	$EGP/work/p2/src	"$PY_CPU" screen_group
 p2_summary	cpu_p2	-	1	$EGP/work/p2/src	"$PY_CPU" summarize_compare3.py; a=$?; "$PY_CPU" summarize_screen_group.py; b=$?; exit $((a + b))
 p2_vs_pc	cpu_p2	-	0.5	$REPO	"$PY_CPU" foundation/compare_reports.py $EGP/work/pc_snapshot/reports $EGP/work/p2/reports --out $EGP/work/p2/reports/_vs_pc.md
 p2_vs_round4	cpu_p2	-	0.5	$REPO	"$PY_CPU" foundation/compare_reports.py $REPO/reports $EGP/work/p2/reports --only model_compare3 screen_group --out $EGP/work/p2/reports/_vs_round4.md
-p1_clean	cpu_p1	wait_round4	16	$EGP/work/p1repro	"$PY_CPU" src/clean.py --years 2558 2559 2560 2561 2562 2563 2564 2565 2566 2567 2568 --threads 4 --memory 10GB --db "$TMPDIR/clean.duckdb"
+p1_profile	cpu_p1	wait_round4	16	$EGP/work/p1repro	"$PY_CPU" src/profile_raw.py --years 2558 2559 2560 2561 2562 2563 2564 2565 2566 2567 2568 --threads 4 --memory 10GB --db "$TMPDIR/profile.duckdb"
+p1_clean	cpu_p1	p1_profile	16	$EGP/work/p1repro	"$PY_CPU" src/clean.py --years 2558 2559 2560 2561 2562 2563 2564 2565 2566 2567 2568 --threads 4 --memory 10GB --db "$TMPDIR/clean.duckdb"
 p1_features_2558	cpu_p1	p1_clean	3	$EGP/work/p1repro	"$PY_CPU" src/features.py --years 2558 --threads 4 --memory 8GB --db "$TMPDIR/feat.duckdb"
 p1_features_2559	cpu_p1	p1_clean	3	$EGP/work/p1repro	"$PY_CPU" src/features.py --years 2559 --threads 4 --memory 8GB --db "$TMPDIR/feat.duckdb"
 p1_features_2560	cpu_p1	p1_clean	3	$EGP/work/p1repro	"$PY_CPU" src/features.py --years 2560 --threads 4 --memory 8GB --db "$TMPDIR/feat.duckdb"

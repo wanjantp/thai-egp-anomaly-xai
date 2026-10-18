@@ -21,6 +21,7 @@ dependencies:
   # วิเคราะห์ / แสดงผล
   - matplotlib
   - seaborn
+  - tabulate        # pandas.to_markdown (reports)
   - jupyterlab
   - ipykernel
   - pip

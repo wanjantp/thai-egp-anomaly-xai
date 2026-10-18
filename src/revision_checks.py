@@ -208,7 +208,7 @@ def boot(R=500, seed=2026):
         out.to_parquet(f, index=False)
         log(f"boot aggregate {y}: {time.time() - t0:.0f}s")
     B = pd.concat([pd.read_parquet(f) for f in sorted(OUT_DIR.glob("boot_25??.parquet"))], ignore_index=True).fillna(0)
-    uid, units = pd.factorize(B.unit)
+    uid, units = pd.factorize(B.unit, sort=True)  # sorted: same bootstrap draws on every machine
     B["uid"] = uid
     nU = len(units)
     act = (B.regime == "act") & B.fy.between(2561, 2568)
