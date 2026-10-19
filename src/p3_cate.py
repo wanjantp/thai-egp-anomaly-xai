@@ -118,6 +118,11 @@ def autoc(tau, s):
 def split_stats(tau, s, g, w, R, fs, rng):
     """BLP, GATES, CLAN, AUTOC on the main half, given the out-of-sample score s."""
     r = {}
+    if np.std(s) < 1e-12:                    # forest predicted a constant (tiny samples): no test possible this split
+        nan = float("nan")
+        r.update(blp_b1=float(np.mean(tau)), blp_b2=nan, blp_se2=nan, gates_diff=nan, gates_diff_se=nan, autoc=nan,
+                 autoc_se=nan, clan={}, **{f"gates{k}": nan for k in range(1, 6)}, **{f"gates{k}_se": nan for k in range(1, 6)})
+        return r
     b, V = ols_cl(tau, np.column_stack([np.ones(len(s)), s - s.mean()]), g, w)
     r["blp_b1"], r["blp_b2"], r["blp_se2"] = b[0], b[1], np.sqrt(V[1, 1])
     q = pd.qcut(pd.Series(s).rank(method="first"), 5, labels=False).to_numpy()
@@ -133,7 +138,7 @@ def split_stats(tau, s, g, w, R, fs, rng):
         x = (fs if c == "first_stage" else R[c].to_numpy())[sel]
         ok = ~np.isnan(x)
         hi = (q[sel] == 4)[ok].astype(float)
-        if ok.sum() < 10 or hi.min() == hi.max():
+        if ok.sum() < 10 or hi.min() == hi.max() or np.std(x[ok]) < 1e-12:
             continue
         bb, VV = ols_cl(x[ok], np.column_stack([np.ones(ok.sum()), hi]), g[sel][ok])
         clan[c] = (bb[0], bb[0] + bb[1], bb[1], np.sqrt(VV[1, 1]))
@@ -155,9 +160,13 @@ def summarise(per):
     for est, se in (("blp_b2", "blp_se2"), ("gates_diff", "gates_diff_se"), ("autoc", "autoc_se")) + \
             tuple((f"gates{k}", f"gates{k}_se") for k in range(1, 6)):
         e, s = np.array([p[est] for p in per]), np.array([p[se] for p in per])
-        pv = np.array([pz(a, b) for a, b in zip(e, s)])
-        out[est] = {"est": float(np.median(e)), "lo": float(np.median(e - Z_SPLIT * s)),
-                    "hi": float(np.median(e + Z_SPLIT * s)), "p": float(min(1, 2 * np.nanmedian(pv)))}
+        pv = np.array([pz(a, b) if np.isfinite(a) and np.isfinite(b) else np.nan for a, b in zip(e, s)])
+        if np.isnan(e).all():
+            out[est] = {"est": np.nan, "lo": np.nan, "hi": np.nan, "p": np.nan}
+            continue
+        out[est] = {"est": float(np.nanmedian(e)), "lo": float(np.nanmedian(e - Z_SPLIT * s)),
+                    "hi": float(np.nanmedian(e + Z_SPLIT * s)), "p": float(min(1, 2 * np.nanmedian(pv)))}
+    out["valid_splits"] = int(sum(np.isfinite(p["blp_b2"]) for p in per))
     out["blp_b1"] = float(np.median([p["blp_b1"] for p in per]))
     keys = sorted(set().union(*[p["clan"] for p in per]))
     out["clan"] = {k: {"bottom": float(np.median([p["clan"][k][0] for p in per if k in p["clan"]])),
@@ -410,10 +419,10 @@ def report(res):
     L += ["## E3 linear BLP (main; standardised covariates; agency-clustered; 10 smallest p)", "", "| covariate | b (pp per SD) | se | p |", "|---|---|---|---|"]
     co = sorted(res["E3_main"]["coef"].items(), key=lambda kv: kv[1]["p"])[:10]
     L += [f"| {k} | {fmt(v['b'])} | {fmt(v['se'])} | {v['p']:.3g} |" for k, v in co] + [""]
-    L += ["## Robustness (E1, same procedure; none decides H1–H4)", "", "| spec | N | β₂ | p | GATES diff (pp) | p |", "|---|---|---|---|---|---|"]
+    L += ["## Robustness (E1, same procedure; none decides H1–H4)", "", "| spec | N | valid splits | β₂ | p | GATES diff (pp) | p |", "|---|---|---|---|---|---|---|"]
     for k in ("R1_purchase", "R2_m1", "R2_m5", "R3_weighted", "R4_pre_to_jul", "R5_no_stimulus", "R7_drop_zero_discount", "R8_alt_local"):
         r = res[k]
-        L.append(f"| {k} | {r['N']:,} | {fmt(r['blp_b2']['est'], 0)} | {r['blp_b2']['p']:.3g} | {fmt(r['gates_diff']['est'])} | {r['gates_diff']['p']:.3g} |")
+        L.append(f"| {k} | {r['N']:,} | {r['valid_splits']} | {fmt(r['blp_b2']['est'], 0)} | {r['blp_b2']['p']:.3g} | {fmt(r['gates_diff']['est'])} | {r['gates_diff']['p']:.3g} |")
     L += ["", "R6 (control 2M–3M, group level): " + "; ".join(
         f"{w}: N = {v['N']:,}, central {fmt(v['central'])} pp, local {fmt(v['local'])} pp, diff {fmt(v['diff'])} (p {v['p']:.3g})"
         for w, v in res["R6_group_2M3M"].items()), "", f"Run time {res['seconds']} s."]
