@@ -23,12 +23,17 @@ their own purchase. Duplicate rows are dropped as in paper 1, with a fixed order
 """
 import argparse
 import json
+import os
+import tempfile
 import time
+from pathlib import Path
+
+import duckdb
 
 import numpy as np
 import pandas as pd
 
-from bunching import GOV_SQL, MAX_PRICE, METHOD_CLS, PROCESSED, REPORTS, connect, log
+from bunching import GOV_SQL, MAX_PRICE, METHOD_CLS, PROCESSED, REPORTS, log
 from revision_checks import src
 
 OUT = PROCESSED / "p3"
@@ -46,10 +51,10 @@ O2_MDE_MAX = O2_REF / 2
 # R5: 2015-16 village / tambon stimulus projects; matched on the project name with spaces removed and Thai digits
 # converted. Locked with the plan; not changed after estimation starts.
 STIM_RE = "ตำบลละ|หมู่บ้านละ|กองทุนหมู่บ้าน|ประชารัฐ|ส่งเสริมความเป็นอยู่"
-DEDUP = ("DISTINCT ON (project_id, contract_no, winner_name, agreed_price, sign_date)",
-         "ORDER BY project_id, contract_no, winner_name, agreed_price, sign_date, budget NULLS LAST, ref_price NULLS LAST, "
-         "agency, sub_agency NULLS LAST, vendor_name_key NULLS LAST, province NULLS LAST, project_type NULLS LAST, "
-         "method NULLS LAST, project_name NULLS LAST")
+# Duplicates (paper 1 keys) are dropped with a hash aggregate: of rows sharing the keys, keep the one with the
+# smallest row hash (deterministic, and it spills to disk; a DISTINCT ON ... ORDER BY over all columns ran out of memory)
+KEYS = "project_id, contract_no, winner_name, agreed_price, sign_date"
+ROWHASH = "hash(budget, ref_price, agency, sub_agency, vendor_name_key, province, project_type, method, project_name)"
 
 
 def band(col):
@@ -86,17 +91,20 @@ def worktype(t):
 
 # ---------------------------------------------------------------- per-year aggregates (DuckDB)
 def build_year(con, y):
-    con.execute(f"""CREATE OR REPLACE TEMP TABLE c AS
-        SELECT {DEDUP[0]} agency, agency || '|' || coalesce(sub_agency, '') AS unit, {GOV_SQL} AS gov,
-               sign_date, strftime(sign_date, '%Y-%m') AS ym, agreed_price, budget, ref_price, province, project_type,
-               {METHOD_CLS} AS mcls,
-               CASE WHEN vendor_name_key IS NULL THEN NULL ELSE vendor_name_key || '|' || coalesce(province, '') END AS vkey,
-               regexp_matches(translate(replace(coalesce(project_name, ''), ' ', ''), '๐๑๒๓๔๕๖๗๘๙', '0123456789'),
-                              '{STIM_RE}') AS stim
-        FROM read_parquet('{src(y)}')
-        WHERE sign_date >= DATE '{START}' AND sign_date < DATE '{ACT}' AND agreed_price > 0 AND agreed_price <= {MAX_PRICE}
-        {DEDUP[1]}""")
-    con.execute(f"""CREATE OR REPLACE TEMP TABLE cd AS
+    cols = {"agency": "agency", "unit": "agency || '|' || coalesce(sub_agency, '')", "gov": GOV_SQL,
+            "ym": "strftime(sign_date, '%Y-%m')", "budget": "budget", "ref_price": "ref_price", "province": "province",
+            "project_type": "project_type", "mcls": METHOD_CLS,
+            "vkey": "CASE WHEN vendor_name_key IS NULL THEN NULL ELSE vendor_name_key || '|' || coalesce(province, '') END",
+            "stim": f"regexp_matches(translate(replace(coalesce(project_name, ''), ' ', ''), '๐๑๒๓๔๕๖๗๘๙', '0123456789'), '{STIM_RE}')"}
+    inner = ", ".join(f"{e} AS {k}" for k, e in cols.items())
+    pick = ", ".join(f"arg_min({k}, h) AS {k}" for k in cols)
+    con.execute("DROP TABLE IF EXISTS c")
+    con.execute(f"""CREATE TABLE c AS
+        WITH r AS (SELECT {KEYS}, {inner}, {ROWHASH} AS h
+                   FROM read_parquet('{src(y)}')
+                   WHERE sign_date >= DATE '{START}' AND sign_date < DATE '{ACT}' AND agreed_price > 0 AND agreed_price <= {MAX_PRICE})
+        SELECT sign_date, agreed_price, {pick} FROM r GROUP BY {KEYS}""")
+    con.execute(f"""CREATE OR REPLACE VIEW cd AS
         SELECT *, {band('agreed_price')} AS band,
                coalesce(budget > 0 AND agreed_price / budget BETWEEN 0.3 AND 1.5, false) AS ok,
                CASE WHEN budget > 0 THEN 1 - agreed_price / budget END AS disc
@@ -145,6 +153,20 @@ def build_year(con, y):
     }
     for name, sql in q.items():
         con.execute(f"COPY ({sql}) TO '{(BUILD / f'{name}_{y}.parquet').as_posix()}' (FORMAT parquet)")
+
+
+def connect():
+    """On-disk database in TMPDIR so the per-year table can spill; threads / memory from EGP_DUCKDB_* (results unchanged)."""
+    tmp = Path(tempfile.gettempdir()) / "p3_panel"
+    tmp.mkdir(parents=True, exist_ok=True)
+    db = tmp / "p3_panel.duckdb"
+    for f in (db, Path(str(db) + ".wal")):
+        f.unlink(missing_ok=True)
+    con = duckdb.connect(str(db))
+    con.execute(f"SET temp_directory='{(tmp / 'spill').as_posix()}'; SET preserve_insertion_order=false; "
+                f"SET threads={os.environ.get('EGP_DUCKDB_THREADS', '4')}; "
+                f"SET memory_limit='{os.environ.get('EGP_DUCKDB_MEMORY', '8GB')}'")
+    return con
 
 
 def load(name):
