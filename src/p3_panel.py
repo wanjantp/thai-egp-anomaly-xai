@@ -141,6 +141,10 @@ def build_year(con, y):
                          sum(CASE WHEN ok AND band = '{TREAT}' THEN disc END) s_t, sum((ok AND band = '{TREAT}')::INT)::INT n_t,
                          sum(CASE WHEN ok AND band = '{CTRL}' THEN disc END) s_c, sum((ok AND band = '{CTRL}')::INT)::INT n_c,
                          sum((ok AND agreed_price = budget)::INT)::INT n_zero, sum(ok::INT)::INT n_ok,
+                         sum(CASE WHEN ok AND band = '0-30k' THEN disc END) s_lo, sum((ok AND band = '0-30k')::INT)::INT n_lo,
+                         sum(CASE WHEN ok AND band = '500k-2M' THEN disc END) s_hi, sum((ok AND band = '500k-2M')::INT)::INT n_hi,
+                         sum((ok AND band NOT IN ('{TREAT}', '{CTRL}') AND agreed_price = budget)::INT)::INT n_zero_o,
+                         sum((ok AND band NOT IN ('{TREAT}', '{CTRL}'))::INT)::INT n_ok_o,
                          sum((band = '{TREAT}' AND mcls = 'discretion')::INT)::INT n_t_disc, sum((band = '{TREAT}')::INT)::INT n_t_all,
                          sum((agreed_price > 90000 AND agreed_price <= 100000)::INT)::INT n_b90,
                          sum((agreed_price > 40000 AND agreed_price <= 80000)::INT)::INT n_b40,
@@ -232,7 +236,7 @@ def mde(v, n):
 
 # ---------------------------------------------------------------- covariates (pre-period only)
 COVARIATES = ["local", "agency_cat", "region", "log_n_contracts", "log_value", "months_active",
-              "disc_treated_pre", "disc_control_pre", "zero_discount_share", "discretion_share_treated",
+              "disc_0_30k_pre", "disc_500k_2m_pre", "zero_discount_share_other", "discretion_share_treated",
               "bunching_index_100k", "split_rate_100k", "log_n_vendors", "vendor_hhi", "top_vendor_share",
               "repeat_vendor_share", "share_goods", "share_services", "share_works", "value_share_treated",
               "ref_price_share"]
@@ -243,7 +247,8 @@ DROPPED_BY_DEFINITION = {"egp_coverage": "item 22 (share of months with >= 1 con
 def covariates(Cc, Cp, S):
     xu = load("xu").groupby("unit").agg(
         agency=("agency", "first"), gov=("gov", "first"),
-        **{c: (c, "sum") for c in ["n_contracts", "val", "s_t", "n_t", "s_c", "n_c", "n_zero", "n_ok", "n_t_disc",
+        **{c: (c, "sum") for c in ["n_contracts", "val", "s_t", "n_t", "s_c", "n_c", "n_zero", "n_ok", "s_lo", "n_lo", "s_hi", "n_hi",
+                                   "n_zero_o", "n_ok_o", "n_t_disc",
                                    "n_t_all", "n_b90", "n_b40", "v_t", "n_ref"]})
     X = pd.DataFrame(index=xu.index)
     X["agency"] = xu.agency
@@ -258,9 +263,16 @@ def covariates(Cc, Cp, S):
     X["log_value"] = np.log(xu.val)
     xm = Cc[Cc.ym <= PRE_R4[1]].groupby("unit").ym.nunique()
     X["months_active"] = xm.reindex(X.index).fillna(0)
-    X["disc_treated_pre"] = xu.s_t / xu.n_t.where(xu.n_t > 0)
-    X["disc_control_pre"] = xu.s_c / xu.n_c.where(xu.n_c > 0)
-    X["zero_discount_share"] = xu.n_zero / xu.n_ok.where(xu.n_ok > 0)
+    # Deviation D1 (19 Oct 2026): discount-based covariates come from contracts OUTSIDE the treated and control bands.
+    # The locked items 7-9 used the same pre-period contracts as tau_u (with the opposite sign), so their sampling
+    # noise would create mechanical "heterogeneity" (regression to the mean). The locked versions are kept in X as
+    # *_locked columns for the record and are never used as covariates.
+    X["disc_0_30k_pre"] = xu.s_lo / xu.n_lo.where(xu.n_lo > 0)
+    X["disc_500k_2m_pre"] = xu.s_hi / xu.n_hi.where(xu.n_hi > 0)
+    X["zero_discount_share_other"] = xu.n_zero_o / xu.n_ok_o.where(xu.n_ok_o > 0)
+    X["disc_treated_pre_locked"] = xu.s_t / xu.n_t.where(xu.n_t > 0)
+    X["disc_control_pre_locked"] = xu.s_c / xu.n_c.where(xu.n_c > 0)
+    X["zero_discount_share"] = xu.n_zero / xu.n_ok.where(xu.n_ok > 0)      # R7 sample restriction only (as locked)
     X["discretion_share_treated"] = xu.n_t_disc / xu.n_t_all.where(xu.n_t_all > 0)
     X["bunching_index_100k"] = xu.n_b90 / xu.n_b40.where(xu.n_b40 > 0)
     s = S[S.ym <= PRE_R4[1]].groupby("unit")[["n_near", "n_near_split", "n_ctrl", "n_ctrl_split"]].sum()
@@ -342,6 +354,9 @@ def main():
             drops[c] = f"missing {miss:.0%}" if miss > 0.5 else "constant"
     meta = {"covariates": COVARIATES, "dropped_by_definition": DROPPED_BY_DEFINITION, "mechanical_drops": drops,
             "drop_rule": "computed on O1 main-window m=3 eligible units: > 50% missing or constant",
+            "deviation_D1": "items 7-9 measured on contracts outside the treated (100k-500k) and control (30k-100k) bands "
+                            "(0-30k and 500k-2M mean discounts; zero-discount share of the other bands) because the locked "
+                            "versions share contracts with tau_u; locked versions kept as *_locked, not used",
             "policy_weights": {"B_u": "treated-band (contract level, 100k-500k) budget, Oct 2014 - Sep 2015",
                                "N_u": "treated-band purchases (unit x vendor x day, banded by purchase total), Oct 2014 - Sep 2015"},
             "x_window": "contracts signed 1 Oct 2014 - 31 Jul 2015", "stimulus_regex": STIM_RE,
